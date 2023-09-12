@@ -7,7 +7,7 @@ Edit user,pass host and table name
 	  user: "root",
 	  password: "",
 	  database: "db1",
-          charset : 'utf8mb4'
+    charset : 'utf8mb4'
 	});
 
 	var mirorreDb = mysql.createPool({
