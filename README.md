@@ -6,7 +6,8 @@ Edit user,pass host and table name
 	  host: "127.0.0.1",
 	  user: "root",
 	  password: "",
-	  database: "db1"
+	  database: "db1",
+          charset : 'utf8mb4'
 	});
 
 	var mirorreDb = mysql.createPool({
@@ -15,6 +16,7 @@ Edit user,pass host and table name
 	  host: "127.0.0.1",
 	  user: "root",
 	  password: "",
-	  database: "db2"
+	  database: "db2",
+          charset : 'utf8mb4'	
 	});
 
