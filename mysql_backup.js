@@ -7,7 +7,8 @@ var masterDb = mysql.createPool({
 host: "127.0.0.1",
 user: "root",
 password: "",
-database: "db1"
+database: "db1",
+charset : 'utf8mb4'
 });
 masterDb.getConnection(function (err, connection) {
 if (!err) {
@@ -23,18 +24,18 @@ multipleStatements: true,
 host: "127.0.0.1",
 user: "root",
 password: "",
-database: "db2"
+database: "db2",
+charset : 'utf8mb4'
 });
 
 mirorreDb.getConnection(function (err, connection) {
-if (!err) {
-  console.log("MYSQL Mirrore Is Connected!");
-} else {
-  console.log(err);
+  if (!err) {
+    console.log("MYSQL Mirrore Is Connected!");
+  } else {
+    console.log(err);
 
-}
+  }
 });
-const insertDb = 1;//multi insert
 const program = async () => {
 
 
@@ -80,6 +81,28 @@ const program = async () => {
         for (let i2 = 0; i2 < keys.length; i2++) {
 
           let _value = values[i2];
+          if (typeof _value === 'string' || _value instanceof String) {
+            // _value=_value.substring(1,_value.length-1)
+          }
+          if (_value instanceof Date && !isNaN(_value)) { // isNaN wont accept a date in typescript, use date.getTime() instead to produce a number
+
+            // var month=_value.getMonth()+1;
+            // //if(month==0)month=12;
+            // var dateToString=
+            // _value.getFullYear()+"-"+
+            // ("0" + month).slice(-2)+"-"+
+            // ("0" + _value.getDate()).slice(-2)+" " 
+            // +("0" + _value.getHours()).slice(-2)+
+            // ":"+("0" + _value.getMinutes()).slice(-2)
+            // +":"+("0" + _value.getSeconds()).slice(-2);
+
+            // _value= dateToString;
+          }
+
+          if (_value == 1.1125369292536007e-308) {
+            _value = 0;
+          }
+
           _value = mirorreDb.escape(_value);
 
 
@@ -165,14 +188,13 @@ const program = async () => {
 program()
   .then(() => console.log('Waiting for database events...'))
   .catch(console.error);
+const insertDb = 1;
 var isQuery = false;
 setInterval(function A() {
 
 
   if (arrayQuery.length != 0 && isQuery == false) {
-    if (arrayQuery.length != 0) {
-      console.log(arrayQuery.length);
-    }
+
     isQuery = true;
     var querys = "";
     var count = insertDb;
@@ -184,6 +206,8 @@ setInterval(function A() {
     for (var i = 0; i < count; i++) {
       querys += arrayQuery[i];
     }
+      console.log("count: "+arrayQuery.length);
+    
     // console.log(querys);
     mirorreDb.getConnection(function (err, connection) {
       if (!err) {
@@ -215,3 +239,4 @@ setInterval(function A() {
 
   }
 }, 50);
+
