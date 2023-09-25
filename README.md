@@ -1,6 +1,6 @@
 With this program, you can completely copy the database at runtime
 
-Edit user,pass host and table name
+Edit user,pass host and DB name
 
 	var masterDb = mysql.createPool({
 		host: "127.0.0.1",
