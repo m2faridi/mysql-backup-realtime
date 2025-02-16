@@ -8,7 +8,8 @@ host: "127.0.0.1",
 user: "root",
 password: "",
 database: "db1",
-charset : 'utf8mb4'
+charset : 'utf8mb4',
+collation: 'utf8mb4_unicode_ci'
 });
 masterDb.getConnection(function (err, connection) {
 if (!err) {
@@ -25,20 +26,23 @@ host: "127.0.0.1",
 user: "root",
 password: "",
 database: "db2",
-charset : 'utf8mb4'
+charset : 'utf8mb4',
+collation: 'utf8mb4_unicode_ci'
 });
 
 mirorreDb.getConnection(function (err, connection) {
   if (!err) {
+    connection.query("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;", () => {
+      connection.release();
+    });
     console.log("MYSQL Mirrore Is Connected!");
   } else {
     console.log(err);
 
   }
 });
+
 const program = async () => {
-
-
   const instance = new MySQLEvents(masterDb, {
     startAtEnd: true,
     excludedSchemas: {
@@ -53,7 +57,9 @@ const program = async () => {
     expression: '*',
     statement: MySQLEvents.STATEMENTS.ALL,
     onEvent: (event) => { // You will receive the events here
-
+      var db = event.schema;
+      var q = {}
+      q.db = db;
       if (event.table == "notifcation_sender") return;
 
       let query = "";
@@ -81,31 +87,12 @@ const program = async () => {
         for (let i2 = 0; i2 < keys.length; i2++) {
 
           let _value = values[i2];
-          if (typeof _value === 'string' || _value instanceof String) {
-            // _value=_value.substring(1,_value.length-1)
-          }
-          if (_value instanceof Date && !isNaN(_value)) { // isNaN wont accept a date in typescript, use date.getTime() instead to produce a number
-
-            // var month=_value.getMonth()+1;
-            // //if(month==0)month=12;
-            // var dateToString=
-            // _value.getFullYear()+"-"+
-            // ("0" + month).slice(-2)+"-"+
-            // ("0" + _value.getDate()).slice(-2)+" " 
-            // +("0" + _value.getHours()).slice(-2)+
-            // ":"+("0" + _value.getMinutes()).slice(-2)
-            // +":"+("0" + _value.getSeconds()).slice(-2);
-
-            // _value= dateToString;
-          }
 
           if (_value == 1.1125369292536007e-308) {
             _value = 0;
           }
 
-          _value = mirorreDb.escape(_value);
-
-
+          _value = masterDb.escape(_value);
 
           if (_value === null) {
             valueForUpdate += " `" + keys[i2] + "` =" + _value;
@@ -144,18 +131,19 @@ const program = async () => {
 
         if (event.type == "UPDATE") {
           if (event.affectedRows[i].before.id != event.affectedRows[i].after.id) {
-            query = "UPDATE `" + event.table + "` SET " + valueForUpdate + " ";
+            query = "UPDATE `" + q.db + "`.`" + event.table + "` SET " + valueForUpdate + " ";
             query += "WHERE `id` = '" + event.affectedRows[i].before.id + "';";
           } else {
-            query = "INSERT INTO `" + event.table + "` " + key + " VALUES ";
+            query = "INSERT INTO `" + q.db + "`.`" + event.table + "` " + key + " VALUES ";
             query += value;
             query += " ON DUPLICATE KEY UPDATE " + valueForUpdate + " ;";
           }
-          arrayQuery.push(query);
+          q.query = query;
+          arrayQuery.push(q);
         }
 
         if (event.type == "INSERT") {
-          query = "INSERT INTO `" + event.table + "` " + key + " VALUES ";
+          query = "INSERT INTO `" + q.db + "`.`" + event.table + "` " + key + " VALUES ";
 
           query += value;
 
@@ -164,17 +152,19 @@ const program = async () => {
         if (event.type == "DELETE") {
 
           if (arraykeysAndValues.id != null) {
-            query = "DELETE FROM `" + event.table + "` WHERE `id`= " + arraykeysAndValues.id;
+            query = "DELETE FROM `" + q.db + "`.`" + event.table + "` WHERE `id`= " + arraykeysAndValues.id;
           } else {
-            query = "DELETE FROM `" + event.table + "` WHERE " + valueForDelete;
+            query = "DELETE FROM `" + q.db + "`.`" + event.table + "` WHERE " + valueForDelete;
 
           }
-          arrayQuery.push(query);
+          q.query = query;
+          arrayQuery.push(q);
         }
       }
       if (event.type == "INSERT") {
         query += ";"
-        arrayQuery.push(query);
+        q.query = query;
+        arrayQuery.push(q);
 
       }
 
@@ -204,16 +194,13 @@ setInterval(function A() {
     }
 
     for (var i = 0; i < count; i++) {
-      querys += arrayQuery[i];
+      querys += arrayQuery[i].query;
     }
-      console.log("count: "+arrayQuery.length);
-    
-    // console.log(querys);
+    console.log("count: " + arrayQuery.length);
+
     mirorreDb.getConnection(function (err, connection) {
       if (!err) {
-
         connection.query(querys, function (error, results, fields) {
-          // When done with the connection, release it.
           connection.release();
 
           if (error) {
@@ -223,20 +210,16 @@ setInterval(function A() {
             }
           } else {
             arrayQuery.splice(0, count);
-
           }
           isQuery = false;
-          // Don't use the connection here, it has been returned to the pool.
         });
       } else {
+        console.log(querys);
         console.dir(err, { depth: null }); // `depth: null` ensures unlimited recursion
         isQuery = false;
-
       }
 
     });
-
-
   }
 }, 50);
 
